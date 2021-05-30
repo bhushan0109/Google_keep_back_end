@@ -70,7 +70,7 @@ public class EmailSender {
 			e.printStackTrace();
 		}
 		try {
-			mimeMessage.setFrom(new InternetAddress(from_email, "Fundoo Note Application"));
+			mimeMessage.setFrom(new InternetAddress(from_email, "google Note Application"));
 		} catch (UnsupportedEncodingException e) {
 
 			e.printStackTrace();

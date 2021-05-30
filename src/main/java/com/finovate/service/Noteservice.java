@@ -26,14 +26,14 @@ public class Noteservice implements INoteService{
 	
 	
 	@Autowired
-	private IUserRepository urepo;
+	private IUserRepository userRepo;
 	@Autowired
-	private INoteRepository nrepo;
+	private INoteRepository noteRepo;
 	@Autowired
 	private JwtGenerator tokenobj;
 	
 	private User authenticatedUser(String token) {
-		User fetchedUser = urepo.getUser(tokenobj.decodeToken(token));
+		User fetchedUser = userRepo.getUser(tokenobj.decodeToken(token));
 		if (fetchedUser != null) {
 			return fetchedUser;
 		}
@@ -49,11 +49,11 @@ public class Noteservice implements INoteService{
 		newNote.setCreatedDate(LocalDateTime.now());
 		newNote.setColor("white");
 		fetchedUser.getNotes().add(newNote);
-		nrepo.saveOrUpdate(newNote);
+		noteRepo.saveOrUpdate(newNote);
 		return true;
 	}
 	private Note verifiedNote(long noteId) {
-		Note fetchedNote = nrepo.getNote(noteId);
+		Note fetchedNote = noteRepo.getNote(noteId);
 		if (fetchedNote != null) {
 			return fetchedNote;
 		}
@@ -66,7 +66,7 @@ public class Noteservice implements INoteService{
 		authenticatedUser(token);
 		// verified valid note
 		verifiedNote(noteId);
-		nrepo.isDeletedNote(noteId);
+		noteRepo.isDeletedNote(noteId);
 		return true;
 	}
 	
@@ -78,7 +78,7 @@ public class Noteservice implements INoteService{
 		Note fetchedNote = verifiedNote(noteId);
 		BeanUtils.copyProperties(noteDto, fetchedNote);
 		fetchedNote.setUpdatedDate(LocalDateTime.now());
-		nrepo.saveOrUpdate(fetchedNote);
+		noteRepo.saveOrUpdate(fetchedNote);
 		return true;
 	}
 	
@@ -87,7 +87,7 @@ public class Noteservice implements INoteService{
 		// found authorized user
 		User fetchedUser = authenticatedUser(token);
 		// note found
-		List<Note> fetchedNotes = nrepo.getAllNotes(fetchedUser.getId());
+		List<Note> fetchedNotes = noteRepo.getAllNotes(fetchedUser.getId());
 		if (!fetchedNotes.isEmpty()) {
 			return fetchedNotes;
 		}
@@ -105,7 +105,7 @@ public class Noteservice implements INoteService{
 		if (!fetchedNote.isArchived()) {
 			fetchedNote.setArchived(true);
 			fetchedNote.setUpdatedDate(LocalDateTime.now());
-			nrepo.saveOrUpdate(fetchedNote);
+			noteRepo.saveOrUpdate(fetchedNote);
 			return true;
 		}
 		// if archived already
@@ -121,13 +121,13 @@ public class Noteservice implements INoteService{
 		if (!fetchedNote.isPinned()) {
 			fetchedNote.setPinned(true);
 			fetchedNote.setUpdatedDate(LocalDateTime.now());
-			nrepo.saveOrUpdate(fetchedNote);
+			noteRepo.saveOrUpdate(fetchedNote);
 			return true;
 		}
 		// if pinned already
 		fetchedNote.setPinned(false);
 		fetchedNote.setUpdatedDate(LocalDateTime.now());
-		nrepo.saveOrUpdate(fetchedNote);
+		noteRepo.saveOrUpdate(fetchedNote);
 		return false;
 	}
 	
@@ -139,7 +139,7 @@ public class Noteservice implements INoteService{
 		Note fetchedNote = verifiedNote(noteId);
 		fetchedNote.setColor(noteColour);
 		fetchedNote.setUpdatedDate(LocalDateTime.now());
-		nrepo.saveOrUpdate(fetchedNote);
+		noteRepo.saveOrUpdate(fetchedNote);
 	}
 	
 	@Override
@@ -151,10 +151,13 @@ public class Noteservice implements INoteService{
 		if (!fetchedNote.isTrashed()) {
 			fetchedNote.setTrashed(true);
 			fetchedNote.setUpdatedDate(LocalDateTime.now());
-			nrepo.saveOrUpdate(fetchedNote);
+			noteRepo.saveOrUpdate(fetchedNote);
 			return true;
 		}
 		// if trashed already
+		fetchedNote.setTrashed(false);
+		fetchedNote.setUpdatedDate(LocalDateTime.now());
+		noteRepo.saveOrUpdate(fetchedNote);
 		return false;
 	}
 	
@@ -167,7 +170,7 @@ public class Noteservice implements INoteService{
 		if (fetchedNote.getRemainderDate() == null) {
 			fetchedNote.setUpdatedDate(LocalDateTime.now());
 			fetchedNote.setRemainderDate(remainderDTO.getRemainder());
-			nrepo.saveOrUpdate(fetchedNote);
+			noteRepo.saveOrUpdate(fetchedNote);
 			return;
 		}
 		throw new ReminderException("Reminder already set!", 502);
@@ -181,33 +184,32 @@ public class Noteservice implements INoteService{
 		if (fetchedNote.getRemainderDate() != null) {
 			fetchedNote.setRemainderDate(null);
 			fetchedNote.setUpdatedDate(LocalDateTime.now());
-			nrepo.saveOrUpdate(fetchedNote);
+			noteRepo.saveOrUpdate(fetchedNote);
 			return;
 		}
 		throw new ReminderException("Reminder already removed!", 502);
 	}
 	
-	@Transactional
-	@Override
-	public boolean restored(String token, Long noteId) {
-		
-		authenticatedUser(token);
-		
-		Note fetchedNote=verifiedNote(noteId);
-		if(fetchedNote.isTrashed()) {
-			fetchedNote.setTrashed(false);
-			fetchedNote.setCreatedDate(LocalDateTime.now());
-			nrepo.saveOrUpdate(fetchedNote);
-			return true;
-			
-		}
-		return false;
+	/*
+	 * @Transactional
+	 * 
+	 * @Override public boolean restored(long noteId, String token) {
+	 * 
+	 * authenticatedUser(token);
+	 * 
+	 * Note fetchedNote=verifiedNote(noteId); if(fetchedNote.isTrashed()) {
+	 * fetchedNote.setTrashed(false);
+	 * fetchedNote.setCreatedDate(LocalDateTime.now());
+	 * noteRepo.saveOrUpdate(fetchedNote); return true;
+	 * 
+	 * } return false;
+	 */
 	
-	}
+	//}
 	@Override
 	public List<Note> getTrashed(String token) {
 		// note found of authenticated user
-		List<Note> fetchedTrashedNotes = nrepo.getTrashed(authenticatedUser(token).getId());
+		List<Note> fetchedTrashedNotes = noteRepo.getTrashed(authenticatedUser(token).getId());
 		if (!fetchedTrashedNotes.isEmpty()) {
 			return fetchedTrashedNotes;
 		}
@@ -218,7 +220,7 @@ public class Noteservice implements INoteService{
 	@Override
 	public List<Note> getPinned(String token) {
 		
-		List<Note> fetchedPinnedNotes = nrepo.getPinned(authenticatedUser(token).getId());
+		List<Note> fetchedPinnedNotes = noteRepo.getPinned(authenticatedUser(token).getId());
 		if (!fetchedPinnedNotes.isEmpty()) {
 			return fetchedPinnedNotes;
 		}
